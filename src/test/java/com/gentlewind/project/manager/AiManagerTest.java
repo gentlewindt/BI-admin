@@ -15,8 +15,7 @@ class AiManagerTest {
 
     @Test
     void doChat() {
-        String answer = aiManager.doChat("邓紫棋");
-
+        String answer = aiManager.doChat(1659171950288818178L,"邓紫棋");
         System.out.println(answer);
     }
 }

@@ -1,13 +1,16 @@
 package com.gentlewind.project.controller;
 
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.gentlewind.project.constant.CommonConstant;
 import com.gentlewind.project.constant.FileConstant;
 import com.gentlewind.project.constant.UserConstant;
+import com.gentlewind.project.manager.AiManager;
 import com.gentlewind.project.model.dto.chart.*;
 import com.gentlewind.project.model.dto.file.UploadFileRequest;
 import com.gentlewind.project.model.enums.FileUploadBizEnum;
+import com.gentlewind.project.model.vo.BiResponse;
 import com.gentlewind.project.utils.ExcelUtils;
 import com.google.gson.Gson;
 import com.gentlewind.project.annotation.AuthCheck;
@@ -23,6 +26,7 @@ import com.gentlewind.project.service.ChartService;
 import com.gentlewind.project.service.UserService;
 import com.gentlewind.project.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
+import net.bytebuddy.implementation.bytecode.Throw;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +37,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 帖子接口
@@ -50,6 +56,9 @@ public class ChartController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiManager aiManager;
 
     private final static Gson GSON = new Gson();
 
@@ -220,8 +229,8 @@ public class ChartController {
      * 智能分析
      */
     @PostMapping("/gen")
-    public BaseResponse<String> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
-                                             GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+    public BaseResponse<BiResponse> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
+                                                 GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
@@ -230,9 +239,93 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "目标为空");// 如果分析目标为空，就抛出请求参数错误异常，并给出提示
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "名称过长");// 如果名称不为空，并且名称长度大于100，就抛出异常，并给出提示
 
-        String result  = ExcelUtils.excelToCsv(multipartFile);
+        /**
+         *    校验文件（保证系统安全）
+         *
+         *    先拿到原始文件的大小和文件名
+          */
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getName();
 
-        return ResultUtils.success(result);
+        /**
+         *  1. 校验文件大小
+         *
+         *  定义一个常量1MB
+         *  1MB = 1024*1024B
+          */
+        final long ONE_MB = 1024 * 1024L;
+        // 文件大小大于一兆，则抛出异常
+        ThrowUtils.throwIf(size > ONE_MB , ErrorCode.PARAMS_ERROR,"文件超过1M");
+
+        /**
+         *  2. 校验文件后缀
+         *
+         *  利用FileUtil工具类中的getSuffix方法获取文件后缀名
+         */
+        String suffix = FileUtil.getSuffix(originalFilename);
+        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg"); // 定义合法的后缀列表
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix),ErrorCode.PARAMS_ERROR,"文件后缀非法"); // 如果后缀不在List的范围内，则抛出异常
+
+        // 通过response对象拿到用户id（必须登录才能使用）
+        User loginUser = userService.getLoginUser(request);
+
+        // 指定一个模型id
+        long biModelId = 1659171950288818178L;
+
+        // 构造用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append("分析需求:").append("\n");
+
+        // 拼接分析目标
+        String userGoal = goal;
+        // 添加图标类型
+        if(StringUtils.isNotBlank(chartType)){
+            userGoal += "，请使用：" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        userInput.append("原始数据").append("\n");
+        // 压缩数据后传入
+        String csvData =  ExcelUtils.excelToCsv(multipartFile);
+        userInput.append(csvData).append("\n");
+
+
+        // 调用AI方法，并拿到返回结果
+        String result = aiManager.doChat(biModelId, userInput.toString());
+
+        // 堆返回结果进行拆分，按照5个中括号进行拆分成三个部分
+        String[] splits = result.split("【【【【【");
+
+        // 拆分后进行校验
+        if(splits.length < 3 ) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI生成错误");
+        }
+
+
+        String genChart = splits[1].trim(); // .trim() 是一个字符串方法，用于移除该字符串首尾的所有空白字符（如空格、制表符、换行符等）。
+        String genResult = splits[2].trim();
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(goal);
+        chart.setChartData(csvData);
+        chart.setChartType(chartType);
+        chart.setGenChart(genChart);
+        chart.setGenResult(genResult);
+        chart.setUserId(loginUser.getId());
+
+        boolean saveResult =  chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+        BiResponse biResponse = new BiResponse();
+        biResponse.setGenChart(genChart);
+        biResponse.setGenResult(genResult);
+        biResponse.setChartId(loginUser.getId());
+
+        return ResultUtils.success(biResponse);
+
+
+
+
+
+
 //        // 处理上传的excel文件
 //        User loginUser = userService.getLoginUser(request);// 获取登录用户信息
 //        String uuid = RandomStringUtils.randomAlphanumeric(8);   // 生成uuid（唯一标识符）：随机生成八位包含大小写字母和数字的字符串

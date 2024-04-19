@@ -19,13 +19,10 @@ public class AiManager {
     @Resource
     private YuCongMingClient yuCongMingClient;
 
-    public String doChat(String message){
-
-
-
+    public String doChat(long modelId , String message){
         // 构造请求参数
         DevChatRequest devChatRequest =  new DevChatRequest();
-        devChatRequest.setModelId(1780203349904629762L);
+        devChatRequest.setModelId(modelId);
         devChatRequest.setMessage(message);
 
         // 获取响应结果
