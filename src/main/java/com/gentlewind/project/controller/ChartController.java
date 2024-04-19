@@ -263,7 +263,7 @@ public class ChartController {
          *  利用FileUtil工具类中的getSuffix方法获取文件后缀名
          */
         String suffix = FileUtil.getSuffix(originalFilename);
-        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg"); // 定义合法的后缀列表
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls"); // 定义合法的后缀列表
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix),ErrorCode.PARAMS_ERROR,"文件后缀非法"); // 如果后缀不在List的范围内，则抛出异常
 
         // 通过response对象拿到用户id（必须登录才能使用）
