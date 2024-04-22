@@ -7,6 +7,7 @@ import com.gentlewind.project.constant.CommonConstant;
 import com.gentlewind.project.constant.FileConstant;
 import com.gentlewind.project.constant.UserConstant;
 import com.gentlewind.project.manager.AiManager;
+import com.gentlewind.project.manager.RedisLimiterManager;
 import com.gentlewind.project.model.dto.chart.*;
 import com.gentlewind.project.model.dto.file.UploadFileRequest;
 import com.gentlewind.project.model.enums.FileUploadBizEnum;
@@ -59,6 +60,9 @@ public class ChartController {
 
     @Resource
     private AiManager aiManager;
+
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     private final static Gson GSON = new Gson();
 
@@ -268,6 +272,11 @@ public class ChartController {
 
         // 通过response对象拿到用户id（必须登录才能使用）
         User loginUser = userService.getLoginUser(request);
+
+        /**
+         *  限流判断
+         */
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
 
         // 指定一个模型id
         long biModelId = 1659171950288818178L;

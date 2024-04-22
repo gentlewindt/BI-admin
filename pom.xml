@@ -133,6 +133,12 @@
             <artifactId>yucongming-java-sdk</artifactId>
             <version>0.0.3</version>
         </dependency>
+        <!--引入Redisson-->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.21.3</version>
+        </dependency>
     </dependencies>
 
     <build>
