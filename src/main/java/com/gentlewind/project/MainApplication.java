@@ -11,9 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 主类（项目启动入口）
  *
  */
-// 如需关闭 Redis，则移除 exclude 下面折行注释
-//@SpringBootApplication(exclude = {RedisAutoConfiguration.class})
-@SpringBootApplication
+// todo 如需开启 Redis，须移除 exclude 中的内容
+@SpringBootApplication(exclude = {RedisAutoConfiguration.class})
 @MapperScan("com.gentlewind.project.utils.mapper")
 @EnableScheduling
 @EnableAspectJAutoProxy(proxyTargetClass = true, exposeProxy = true)

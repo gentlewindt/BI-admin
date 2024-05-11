@@ -1,13 +1,9 @@
-
 package com.gentlewind.project.config;
 
 
 
-import com.gentlewind.project.constant.BloomConstant;
 import lombok.Data;
-import lombok.Value;
 import org.redisson.Redisson;
-import org.redisson.api.RBloomFilter;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,8 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-//@ConfigurationProperties(prefix = "spring.redis") // 从application.yml文化中读取前缀为"spring.redis"的配置项
-@ConfigurationProperties(prefix = "spring.redission")
+@ConfigurationProperties(prefix = "spring.redis") // 从application.yml文化中读取前缀为"spring.redis"的配置项
 @Data
 public class RedissonConfig {
     private Integer database;
@@ -31,12 +26,6 @@ public class RedissonConfig {
     // spring启动时，会自动创建一个RedissonClient对象
     @Bean
     public RedissonClient getRedissionClient() {
-        /**
-         *  连接哨兵：config.useSentinelServers().setMasterName("myMaster").addSentinelAddress()
-         *  连接集群：config.useClusterServers().addNodeAddress()
-         *  连接主从：config.useMasterSlaveServers().setMasterAddress("xxx").addSlaveAddress("xxx")
-         */
-        // 连接单机
         // 1. 创建配置对象
         Config config = new Config();
 
@@ -57,15 +46,7 @@ public class RedissonConfig {
 
         return redisson;
 
+
+
     }
-
-
-    // 创建布隆过滤器
-    @Bean(BloomConstant.NAME_SECKILL)
-    public RBloomFilter<Object> seckillBloomFilter(){
-        RBloomFilter<Object> bloomFilter = getRedissionClient().getBloomFilter(BloomConstant.NAME_SECKILL);
-        bloomFilter.tryInit(BloomConstant.EXPECTED_INSERTIONS_SECKILL, BloomConstant.FALSE_POSITIVERATE_SECKILL);
-        return bloomFilter;
-    }
-
 }
