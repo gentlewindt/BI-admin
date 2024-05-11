@@ -26,7 +26,7 @@ public class RedisLimiterManager {
      * @param key 区分不同的限流器，比如不同的用户id应该分别统计请求次数
      */
     public void doRateLimit(String key) {
-        // 创建一个名称为的限流器，每秒最多访问2次
+        // 创建一个名称为key的限流器，每秒最多访问2次
         RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
 
         // 限流器的统计规则（每秒2个请求,连续的请求最多只有1个请求被允许通过）

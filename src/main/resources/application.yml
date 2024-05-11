@@ -21,6 +21,13 @@ spring:
     url: jdbc:mysql://localhost:3306/bi_db
     username: root
     password: 589274
+  # Redisson 配置
+#  redisson:
+#    database: 1
+#    host: 192.168.88.130
+#    port: 6379
+#    timeout: 5000
+#    password: 123456
   # Redis 配置
   redis:
     database: 1
@@ -28,6 +35,12 @@ spring:
     port: 6379
     timeout: 5000
     password:
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 10
+        min-idle: 1
+        time-between-eviction-runs: 10s
   # Elasticsearch 配置
   # todo 需替换配置，然后取消注释
 #  elasticsearch:
@@ -45,8 +58,6 @@ spring:
     port: 5672
     password: guest
     username: guest
-
-
 
 server:
   address: 0.0.0.0
